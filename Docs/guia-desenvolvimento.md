@@ -9,13 +9,14 @@
 Cada serviço é uma **aplicação NestJS completamente independente**: tem seu próprio `package.json`, seu próprio `node_modules`, seu próprio `tsconfig.json`. Elas vivem em pastas separadas dentro do mesmo repositório GitHub.
 
 ```
-projeto-microsservicos/
+ava-bim-2/
 │
 ├── .gitignore              ← ignora node_modules/ e .env em qualquer subpasta
 ├── .env.example
 ├── docker-compose.yml      ← orquestra todos os containers
+├── readme.md
 │
-├── api-gateway/            ← NestJS app independente
+├── api_gateway/            ← NestJS app independente
 │   ├── src/
 │   │   ├── main.ts
 │   │   ├── app.module.ts
@@ -25,21 +26,25 @@ projeto-microsservicos/
 │   ├── nest-cli.json
 │   └── Dockerfile
 │
-├── auth-service/           ← NestJS app independente
+├── auth_service/           ← NestJS app independente
 │   ├── src/
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── nest-cli.json
 │   └── Dockerfile
 │
-├── servico-a/              ← NestJS app independente
-│   └── ...
+├── user-service/           ← NestJS app independente (configurado)
+│   ├── src/
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── nest-cli.json
+│   ├── .env.example
+│   └── Dockerfile
 │
 ├── monitoring/
 │   └── prometheus.yml
 │
-└── tests/
-    └── load/
+└── Docs/
 ```
 
 O `docker-compose.yml` e os arquivos da raiz são compartilhados pelo time inteiro. Cada pasta de serviço pertence a uma pessoa.
@@ -100,86 +105,128 @@ O `docker-compose.yml` e os arquivos da raiz são compartilhados pelo time intei
 
 ## Organização do repositório Git
 
-### Estrutura de branches
+### Serviços e branches
+
+| Serviço | Pasta | Branch | Porta externa |
+|---|---|---|---|
+| API Gateway | `api_gateway/` | `gateway` | 3000 |
+| Autenticação | `auth_service/` | `auth` | — |
+| Usuários | `user-service/` | `user` | 3001 |
 
 ```
 main
-├── feature/infra-docker        ← docker-compose base, Dockerfiles
-├── feature/api-gateway         ← gateway e roteamento
-├── feature/auth-service        ← serviço de autenticação
-├── feature/[servico-1]         ← primeiro serviço de negócio
-├── feature/[servico-2]         ← segundo serviço de negócio
-└── feature/observabilidade     ← Prometheus, Grafana, k6
+├── user        ← user-service (usuários e perfis)
+├── auth        ← auth_service (autenticação e JWT)
+├── gateway     ← api_gateway (entrada, roteamento, Swagger)
+└── menu        ← [serviço de negócio adicional]
 ```
 
 Regra simples: **cada pessoa trabalha na sua branch**. O `docker-compose.yml` e arquivos da raiz ficam na `main` e são atualizados via Pull Request conforme cada serviço é integrado.
 
+```bash
+# Clonar o repositório
+git clone https://github.com/usuario/ava-bim-2.git
+cd ava-bim-2
+
+# Criar sua branch (nome do serviço, sem prefixo)
+git checkout -b user
+
+# Publicar a branch no GitHub pela primeira vez
+git push -u origin user
+
+# Nas próximas vezes, só:
+git push
+
+# Ver todas as branches (locais e remotas)
+git branch -a
+
+# Trocar de branch
+git checkout main
+git checkout user
+```
+
+### Convenção de mensagens de commit
+
+Os commits usam **conventional commits escopados** — o escopo identifica o serviço:
+
+```
+tipo(escopo): descrição curta
+```
+
+| Prefixo | Quando usar |
+|---------|-------------|
+| `feat(user):` | nova funcionalidade no user-service |
+| `feat(auth):` | nova funcionalidade no auth_service |
+| `feat(gateway):` | nova funcionalidade no api_gateway |
+| `fix(user):` | correção de bug |
+| `chore(user):` | configuração, dependências |
+| `docs:` | documentação (sem escopo de serviço) |
+| `refactor(auth):` | refatoração sem mudar comportamento |
+
+Exemplos reais do projeto:
+
+```bash
+git commit -m "feat(user): add docker file and init docker compose"
+git commit -m "chore(user): initial service configuration"
+git commit -m "chore(gateway): init api_gateway service"
+git commit -m "docs: update documentation for nest.js"
+```
+
 ---
 
-## Primeiros passos — configurando o repositório
+## Como rodar o projeto
 
-### 1. Quem cria o repositório
+### Pré-requisitos
 
-```bash
-mkdir projeto-microsservicos
-cd projeto-microsservicos
+- [Docker](https://docs.docker.com/get-docker/) e Docker Compose
+- Node.js 22+ (para desenvolvimento local fora do Docker)
 
-git init
-
-# .gitignore na raiz — cobre node_modules e .env em qualquer subpasta
-cat > .gitignore << 'EOF'
-node_modules/
-.env
-.env.local
-*.log
-dist/
-EOF
-
-# .env.example com as chaves necessárias (sem valores)
-cat > .env.example << 'EOF'
-JWT_SECRET=
-MONGO_URI=
-SERVICO_A_URL=
-SERVICO_B_URL=
-EOF
-
-git add .
-git commit -m "chore: estrutura inicial do projeto"
-
-git remote add origin https://github.com/seu-usuario/projeto-microsservicos.git
-git push -u origin main
-```
-
-### 2. Cada pessoa clona e cria sua branch
+### Do zero
 
 ```bash
-git clone https://github.com/seu-usuario/projeto-microsservicos.git
-cd projeto-microsservicos
+git clone <url-do-repo>
+cd ava-bim-2
 
-git checkout -b feature/nome-do-servico
+# Copiar e preencher o .env de cada serviço
+cp user-service/.env.example user-service/.env
+# ... repetir para cada serviço configurado
+
+# Subir tudo
+docker-compose up -d
 ```
 
-### 3. Criar o projeto NestJS do seu serviço
+### Verificar endpoints
 
-Dentro da pasta do repositório, na sua branch:
+```
+http://localhost:3000   → api_gateway
+http://localhost:3001   → user-service
+```
+
+---
+
+## Primeiros passos — criando seu serviço
+
+### 1. Criar o projeto NestJS
+
+Na raiz do repositório, na sua branch:
 
 ```bash
 # Instalar o CLI do NestJS (uma vez só, global)
 npm install -g @nestjs/cli
 
 # Criar o projeto NestJS na pasta do seu serviço
-nest new auth-service --skip-git
+nest new nome-do-servico --skip-git
 
-# O CLI vai criar a pasta auth-service/ com tudo configurado:
+# O CLI vai criar a pasta com tudo configurado:
 # src/app.module.ts, src/main.ts, package.json, tsconfig.json, etc.
 ```
 
 A flag `--skip-git` é importante — evita que o NestJS crie um repositório Git separado dentro da pasta do serviço.
 
-Depois de criar, o serviço já roda localmente:
+### 2. Rodar localmente
 
 ```bash
-cd auth-service
+cd nome-do-servico
 npm run start:dev   # modo watch, reinicia ao salvar
 ```
 
@@ -193,7 +240,7 @@ npm run start:dev   # modo watch, reinicia ao salvar
 git checkout main
 git pull origin main
 
-git checkout feature/nome-do-servico
+git checkout user   # sua branch
 git merge main
 ```
 
@@ -204,30 +251,20 @@ Faça isso antes de começar a trabalhar. Evita conflitos grandes no final.
 ```bash
 git status
 
-# Adicionar arquivos específicos
-git add auth-service/src/auth/auth.service.ts
-git add auth-service/src/auth/auth.controller.ts
+# Adicionar arquivos específicos (nunca git add -A cegamente)
+git add user-service/src/users/users.service.ts
+git add user-service/src/users/users.controller.ts
 
-git commit -m "feat: implementar rota de login com geração de JWT"
+git commit -m "feat(user): implementar CRUD de usuários"
 
-git push origin feature/nome-do-servico
+git push origin user
 ```
-
-### Convenção de mensagens de commit
-
-| Prefixo | Quando usar |
-|---------|-------------|
-| `feat:` | nova funcionalidade |
-| `fix:` | correção de bug |
-| `chore:` | configuração, dependências |
-| `docs:` | documentação |
-| `refactor:` | refatoração sem mudar comportamento |
 
 ### Abrindo Pull Request — quando o serviço estiver pronto
 
 1. Acesse o repositório no GitHub
 2. Clique em **"Compare & pull request"** na sua branch
-3. Título direto: `feat: [nome-do-servico] completo`
+3. Título direto: `feat(user): user-service completo`
 4. Descrição: o que foi implementado e como testar
 5. Peça para alguém do time revisar antes de fazer merge na `main`
 
@@ -235,103 +272,72 @@ git push origin feature/nome-do-servico
 
 ## Criando os containers Docker
 
-### Dockerfile para serviços NestJS
+### Dockerfile
 
-O NestJS é TypeScript — precisa de um **passo de build** que compila para JavaScript na pasta `dist/`. O Dockerfile usa multi-stage build para isso: o primeiro estágio compila, o segundo roda apenas o código compilado (imagem menor).
+Cada serviço tem seu próprio `Dockerfile` dentro da sua pasta. O estágio `development` usa hot reload — o código fonte é montado via volume no compose, então alterações refletem sem rebuild.
 
 ```dockerfile
-# Estágio 1: compilar o TypeScript
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
+# TODO: adicionar estágio production (npm run build → node dist/main)
+FROM node:22-alpine AS development
 
-# Estágio 2: imagem final só com o necessário para rodar
-FROM node:20-alpine
-WORKDIR /app
+WORKDIR /usr/src/app
+
 COPY package*.json ./
-RUN npm install --omit=dev
-COPY --from=builder /app/dist ./dist
-EXPOSE 3001
-CMD ["node", "dist/main"]
+
+RUN npm install
+
+COPY . .
+
+CMD ["npm", "run", "start:dev"]
 ```
 
-Troque a porta (`EXPOSE`) conforme o serviço. Defina as portas no início do projeto e alinhe com o time.
+### docker-compose.yml — padrão por serviço
 
-### docker-compose.yml — estrutura base
+Cada serviço segue o mesmo padrão: uma entrada para a aplicação (`<nome>-app`) e uma para o banco (`<nome>-db`). O volume duplo no serviço app garante o hot reload sem perder o `node_modules` do container.
 
 ```yaml
 services:
 
-  api-gateway:
-    build: ./api-gateway
+  # --- nome-do-servico ---
+  nome-app:
+    build:
+      context: ./nome-do-servico     # pasta do serviço
+      target: development
+    env_file:
+      - ./nome-do-servico/.env
     ports:
-      - "3000:3000"
-    environment:
-      - JWT_SECRET=${JWT_SECRET}
-      - SERVICO_A_URL=http://servico-a:3002
-      - SERVICO_B_URL=http://servico-b:3003
-    depends_on:
-      - auth-service
-      - servico-a
-      - servico-b
-
-  auth-service:
-    build: ./auth-service
-    environment:
-      - MONGO_URI=${MONGO_URI}
-      - JWT_SECRET=${JWT_SECRET}
-    depends_on:
-      - database
-
-  servico-a:
-    build: ./servico-a
-    environment:
-      - MONGO_URI=${MONGO_URI}
-    depends_on:
-      - database
-
-  servico-b:
-    build: ./servico-b
-    environment:
-      - MONGO_URI=${MONGO_URI}
-      - SERVICO_A_URL=http://servico-a:3002
-    depends_on:
-      - database
-      - servico-a
-
-  database:
-    image: mongo:7
-    ports:
-      - "27017:27017"
+      - "300X:3000"                  # porta externa:interna (3000 é o padrão NestJS)
     volumes:
-      - db-data:/data/db
-
-  prometheus:
-    image: prom/prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-
-  grafana:
-    image: grafana/grafana
-    ports:
-      - "3030:3000"
+      - ./nome-do-servico:/usr/src/app   # monta o código → hot reload
+      - /usr/src/app/node_modules        # preserva o node_modules do container
     depends_on:
-      - prometheus
+      - nome-db
+
+  nome-db:
+    image: mongo
+    env_file:
+      - ./nome-do-servico/.env
+    volumes:
+      - nome-data:/data/db
 
 volumes:
-  db-data:
+  nome-data:
 ```
 
-### Arquivo .env na raiz
+Para adicionar um novo serviço, copie o bloco acima, troque `nome` e ajuste a porta externa.
+
+### .env.example de cada serviço
+
+Cada serviço tem seu próprio `.env.example` dentro da sua pasta:
 
 ```
-JWT_SECRET=uma_chave_secreta_longa_e_aleatoria
-MONGO_URI=mongodb://database:27017/projeto
+# Credenciais MongoDB
+MONGO_INITDB_ROOT_USERNAME=
+MONGO_INITDB_ROOT_PASSWORD=
+MONGODB_URI=mongodb://usuario:senha@nome-db:27017/nomedb?authSource=admin
+
+# Porta interna do NestJS
+PORT=3000
 ```
 
 Nunca commite o `.env` — ele já está no `.gitignore`. Cada membro cria o seu localmente com base no `.env.example`.
@@ -344,8 +350,11 @@ Nunca commite o `.env` — ele já está no `.gitignore`. Cada membro cria o seu
 # Subir todos os containers em background
 docker-compose up -d
 
+# Subir e rebuildar imagens após mudança de código
+docker-compose up -d --build
+
 # Ver os logs de um serviço específico
-docker-compose logs -f nome-do-servico
+docker-compose logs -f users-app
 
 # Parar tudo
 docker-compose down
@@ -353,8 +362,8 @@ docker-compose down
 # Parar e apagar os volumes (reseta o banco)
 docker-compose down -v
 
-# Rebuild de um serviço após mudança de código
-docker-compose up -d --build nome-do-servico
+# Rebuild de um serviço específico
+docker-compose up -d --build users-app
 
 # Ver status dos containers
 docker-compose ps
@@ -367,14 +376,17 @@ docker-compose ps
 Durante o desenvolvimento, você não precisa subir todos os containers. Suba só o banco e seu serviço:
 
 ```bash
-docker-compose up -d database auth-service
+# Sobe só o banco e o serviço em desenvolvimento
+docker-compose up -d users-db users-app
 
 # Ou rode localmente sem Docker (mais rápido no dia a dia):
-cd auth-service
+cd user-service
 npm run start:dev
 ```
 
-O NestJS em modo `start:dev` usa o Mongoose para conectar no MongoDB. Para isso, configure um `.env` local dentro da pasta do serviço com `MONGO_URI=mongodb://localhost:27017/auth` e suba só o MongoDB via Docker.
+O NestJS em modo `start:dev` usa hot reload — reinicia automaticamente ao salvar arquivos.
+
+Para conectar localmente sem Docker, configure `MONGODB_URI=mongodb://localhost:27017/users` no `.env` do serviço e suba só o MongoDB via Docker.
 
 Quando estiver funcionando isolado, avise o time para integrar no compose completo.
 
@@ -400,13 +412,13 @@ constructor(private readonly httpService: HttpService) {}
 
 async buscarRecurso(id: string) {
   const { data } = await firstValueFrom(
-    this.httpService.get(`${process.env.SERVICO_A_URL}/recurso/${id}`)
+    this.httpService.get(`${process.env.USER_SERVICE_URL}/users/${id}`)
   );
   return data;
 }
 ```
 
-A variável `SERVICO_A_URL` vale `http://servico-a:3002` dentro do Docker e `http://localhost:3002` no desenvolvimento local.
+Dentro do Docker, a URL é o **nome do serviço no docker-compose**: `http://users-app:3000`. No desenvolvimento local, é `http://localhost:3001`.
 
 ---
 
@@ -415,5 +427,6 @@ A variável `SERVICO_A_URL` vale `http://servico-a:3002` dentro do Docker e `htt
 - **Não mexa em arquivos de outros serviços.** Se precisar, converse antes
 - **O `docker-compose.yml` é compartilhado** — alinhem antes de fazer merge de mudanças nele
 - **Antes de abrir PR**, rode `docker-compose up --build` localmente e confirme que tudo sobe
-- **Variável de ambiente nova**: adicione ao `.env.example` antes de fazer merge
+- **Variável de ambiente nova**: adicione ao `.env.example` do serviço antes de fazer merge
 - **Nunca commite `node_modules/`** — o `.gitignore` já cobre, mas confirme antes do primeiro push de cada serviço
+- **Nunca commite `.env`** — use `.env.example` como referência para o time
