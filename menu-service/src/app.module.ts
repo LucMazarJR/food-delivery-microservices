@@ -5,10 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 @Module({
-  imports: [
-    MenuModule,
-    MongooseModule.forRoot(process.env.MONGODB_URI ?? ''),
-  ],
+  imports: [MenuModule, MongooseModule.forRoot(process.env.MONGODB_URI ?? '')],
   controllers: [AppController],
   providers: [AppService],
 })

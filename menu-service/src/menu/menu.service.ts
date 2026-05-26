@@ -16,9 +16,7 @@ interface MongoError {
 
 @Injectable()
 export class MenuService {
-  constructor(
-    @InjectModel(MenuItem.name) private menuModel: Model<MenuItem>,
-  ) {}
+  constructor(@InjectModel(MenuItem.name) private menuModel: Model<MenuItem>) {}
 
   async create(dto: CreateMenuItemDto): Promise<MenuItem> {
     const created = new this.menuModel(dto);
