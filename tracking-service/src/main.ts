@@ -13,7 +13,8 @@ async function bootstrap() {
     .addTag('Tracking', 'Localização em tempo real')
     .build();
 
-  SwaggerModule.setup('api', app, () => SwaggerModule.createDocument(app, config), {
+  const documentFactory = () => SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, documentFactory, {
     swaggerOptions: { persistAuthorization: true },
   });
 

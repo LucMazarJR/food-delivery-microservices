@@ -6,9 +6,7 @@ import {
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
-  WsException,
 } from '@nestjs/websockets';
-import { UsePipes, ValidationPipe } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { TrackingService } from './tracking.service';
@@ -40,10 +38,7 @@ export class TrackingGateway
   }
 
   @SubscribeMessage('update_location')
-  @UsePipes(new ValidationPipe({ whitelist: true, exceptionFactory: (e) => new WsException(e) }))
-  async handleLocationUpdate(
-    @MessageBody() dto: UpdateLocationDto,
-  ) {
+  async handleLocationUpdate(@MessageBody() dto: UpdateLocationDto) {
     const location = await this.trackingService.upsertLocation(dto);
     this.server.to(`order:${dto.orderId}`).emit('location_updated', location);
     return location;

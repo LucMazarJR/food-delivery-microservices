@@ -12,16 +12,20 @@ export class TrackingService {
   ) {}
 
   async upsertLocation(dto: UpdateLocationDto): Promise<Location> {
-    return this.locationModel.findOneAndUpdate(
+    const result = await this.locationModel.findOneAndUpdate(
       { orderId: new Types.ObjectId(dto.orderId) },
       {
-        orderId: new Types.ObjectId(dto.orderId),
-        deliveryPersonId: new Types.ObjectId(dto.deliveryPersonId),
-        latitude: dto.latitude,
-        longitude: dto.longitude,
+        $set: {
+          deliveryPersonId: new Types.ObjectId(dto.deliveryPersonId),
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+        },
+        $setOnInsert: { orderId: new Types.ObjectId(dto.orderId) },
       },
       { upsert: true, new: true },
     );
+    if (!result) throw new Error(`Falha ao salvar localização para o pedido ${dto.orderId}`);
+    return result;
   }
 
   async getLastLocation(orderId: string): Promise<Location | null> {
