@@ -42,7 +42,6 @@ export class PaymentService {
     try {
       const payment = await this.paymentModel
         .findOne({ orderId: new Types.ObjectId(orderId) })
-        .sort({ createdAt: -1 })
         .exec();
       if (!payment) throw new NotFoundException(`Nenhum pagamento encontrado para o pedido ${orderId}`);
       return payment;
