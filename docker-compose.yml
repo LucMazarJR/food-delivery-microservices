@@ -125,9 +125,34 @@ services:
     volumes:
       - restaurant-data:/data/db
 
+  # Serviço de Rastreamento (6)
+  tracking-app:
+    build:
+      context: ./tracking-service
+      target: development
+    env_file:
+      - ./tracking-service/.env
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "3006:3000"
+    volumes:
+      - ./tracking-service:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - tracking-db
+
+  tracking-db:
+    image: mongo
+    env_file:
+      - ./tracking-service/.env
+    volumes:
+      - tracking-data:/data/db
+
 
 volumes:
   users-data:
   orders-data:
   delivery-data:
   restaurant-data:
+  tracking-data:
