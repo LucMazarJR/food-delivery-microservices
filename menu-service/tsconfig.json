@@ -27,9 +27,8 @@
   "watchOptions": {
     "watchFile": "fixedPollingInterval",
     "watchDirectory": "fixedPollingInterval",
-    "fallbackPolling": "fixedinterval"
-  }
-  ,
+    "fallbackPolling": "fixedInterval"
+  },
   "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist"]
 }

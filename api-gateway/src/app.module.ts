@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+import { MetricsController } from './metrics.controller';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { JwtModule } from '@nestjs/jwt';
@@ -17,6 +19,10 @@ import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
+    PrometheusModule.register({
+      controller: MetricsController,
+      defaultMetrics: { enabled: true },
+    }),
     ConfigModule.forRoot({ isGlobal: true }),
     HttpModule,
     JwtModule.register({

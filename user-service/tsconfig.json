@@ -26,6 +26,6 @@
   "watchOptions": {
     "watchFile": "fixedPollingInterval",
     "watchDirectory": "fixedPollingInterval",
-    "fallbackPolling": "fixedinterval"
+    "fallbackPolling": "fixedInterval"
   }
 }
