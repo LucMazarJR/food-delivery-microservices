@@ -27,6 +27,7 @@ async function bootstrap() {
     .addTag('Delivery', 'Gerenciamento de entregas')
     .addTag('Payment', 'Gerenciamento de pagamentos')
     .addTag('Menu', 'Gerenciamento de itens do cardápio')
+    .addTag('Tracking', 'Rastreamento de entregas em tempo real')
     .build();
 
   const documentFactory = () => SwaggerModule.createDocument(app, config);
