@@ -11,6 +11,7 @@ import { DeliveryModule } from './delivery/delivery.module';
 import { OrdersModule } from './orders/orders.module';
 import { RestaurantModule } from './restaurant/restaurant.module';
 import { PaymentModule } from './payment/payment.module';
+import { MenuModule } from './menu/menu.module';
 import { HttpModule } from '@nestjs/axios';
 
 @Module({
@@ -28,6 +29,7 @@ import { HttpModule } from '@nestjs/axios';
     OrdersModule,
     RestaurantModule,
     PaymentModule,
+    MenuModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: AuthGuard }],
