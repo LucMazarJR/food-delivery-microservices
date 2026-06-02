@@ -53,6 +53,13 @@ services:
       - ./auth-service:/usr/src/app
       - /usr/src/app/node_modules
 
+  # Serviço de Pedidos (3)
+  orders-app:
+    build:
+      context: ./orders-service
+      target: development
+    env_file:
+      - ./orders-service/.env
   # Serviço de Cardápio (3)
   menu-app:
     build:
@@ -65,6 +72,122 @@ services:
     ports:
       - "3003:3000"
     volumes:
+      - ./orders-service:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - orders-db
+
+  orders-db:
+    image: mongo
+    env_file:
+      - ./orders-service/.env
+    volumes:
+      - orders-data:/data/db
+
+  # Serviço de entrega (4)
+  delivery-app:
+    build:
+      context: ./delivery-service
+      target: development
+    env_file:
+      - ./delivery-service/.env
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "3004:3000"
+    volumes:
+      - ./delivery-service:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - delivery-db
+
+  delivery-db:
+    image: mongo
+    env_file:
+      - ./delivery-service/.env
+    volumes:
+      - delivery-data:/data/db
+
+  # Serviço de Restaurantes (5)
+  restaurant-app:
+    build:
+      context: ./restaurant-service
+      target: development
+    env_file:
+      - ./restaurant-service/.env
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "3005:3000"
+    volumes:
+      - ./restaurant-service:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - restaurant-db
+
+  restaurant-db:
+    image: mongo
+    env_file:
+      - ./restaurant-service/.env
+    volumes:
+      - restaurant-data:/data/db
+
+  # Serviço de Rastreamento (6)
+  tracking-app:
+    build:
+      context: ./tracking-service
+      target: development
+    env_file:
+      - ./tracking-service/.env
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "3006:3000"
+    volumes:
+      - ./tracking-service:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - tracking-db
+
+  tracking-db:
+    image: mongo
+    env_file:
+      - ./tracking-service/.env
+    volumes:
+      - tracking-data:/data/db
+
+  # Serviço de Pagamentos (7)
+  payment-app:
+    build:
+      context: ./payment-service
+      target: development
+    env_file:
+      - ./payment-service/.env
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "3007:3000"
+    volumes:
+      - ./payment-service:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - payment-db
+
+  payment-db:
+    image: mongo
+    env_file:
+      - ./payment-service/.env
+    volumes:
+      - payment-data:/data/db
+
+
+volumes:
+  users-data:
+  orders-data:
+  delivery-data:
+  restaurant-data:
+  tracking-data:
+  payment-data:
       - ./menu-service:/usr/src/app
       - /usr/src/app/node_modules
     depends_on:
