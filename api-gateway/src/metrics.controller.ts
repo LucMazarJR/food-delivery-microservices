@@ -1,6 +1,6 @@
 import { Controller, Get, Res } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { register } from 'prom-client';
 import { Public } from './decorators/jwt_public.decorator';
 
