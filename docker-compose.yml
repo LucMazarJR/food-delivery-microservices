@@ -197,6 +197,24 @@ services:
     volumes:
       - menu-data:/data/db
 
+  # Teste de carga
+  k6:
+    image: grafana/k6:latest
+    profiles:
+      - load-test
+    environment:
+      - BASE_URL=http://gateway-app:3000
+      - TEST_EMAIL=${K6_TEST_EMAIL}
+      - TEST_PASSWORD=${K6_TEST_PASSWORD}
+      - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
+      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
+    volumes:
+      - ./k6:/scripts
+    command: run --out experimental-prometheus-rw /scripts/load-test.js
+    depends_on:
+      - gateway-app
+      - prometheus
+
   # Monitoramento
   prometheus:
     image: prom/prometheus:latest
@@ -209,6 +227,7 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.enable-lifecycle'
+      - '--web.enable-remote-write-receiver'
 
   grafana:
     image: grafana/grafana:latest
