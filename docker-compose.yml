@@ -228,6 +228,7 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.enable-lifecycle'
       - '--web.enable-remote-write-receiver'
+      - '--enable-feature=native-histograms'
 
   grafana:
     image: grafana/grafana:latest

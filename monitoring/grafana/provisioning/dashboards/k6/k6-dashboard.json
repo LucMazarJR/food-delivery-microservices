@@ -25,12 +25,12 @@
       "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, rate(k6_http_req_duration_bucket[30s]))",
-          "legendFormat": "p95 duração (ms)"
+          "expr": "histogram_quantile(0.95, rate(k6_http_req_duration_seconds[30s])) * 1000",
+          "legendFormat": "p95 (ms)"
         },
         {
-          "expr": "histogram_quantile(0.50, rate(k6_http_req_duration_bucket[30s]))",
-          "legendFormat": "p50 duração (ms)"
+          "expr": "histogram_quantile(0.50, rate(k6_http_req_duration_seconds[30s])) * 1000",
+          "legendFormat": "p50 (ms)"
         }
       ]
     },
@@ -41,8 +41,8 @@
       "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
       "targets": [
         {
-          "expr": "rate(k6_http_req_failed_total[30s])",
-          "legendFormat": "erros/s"
+          "expr": "k6_http_req_failed_rate",
+          "legendFormat": "taxa de erros"
         }
       ]
     },
@@ -65,24 +65,36 @@
       "gridPos": { "x": 0, "y": 16, "w": 24, "h": 8 },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, rate(k6_auth_login_duration_bucket[30s]))",
+          "expr": "histogram_quantile(0.95, rate(k6_auth_login_duration[30s]))",
           "legendFormat": "auth login"
         },
         {
-          "expr": "histogram_quantile(0.95, rate(k6_user_list_duration_bucket[30s]))",
+          "expr": "histogram_quantile(0.95, rate(k6_user_list_duration[30s]))",
           "legendFormat": "user list"
         },
         {
-          "expr": "histogram_quantile(0.95, rate(k6_order_list_duration_bucket[30s]))",
+          "expr": "histogram_quantile(0.95, rate(k6_order_list_duration[30s]))",
           "legendFormat": "order list"
         },
         {
-          "expr": "histogram_quantile(0.95, rate(k6_restaurant_list_duration_bucket[30s]))",
+          "expr": "histogram_quantile(0.95, rate(k6_order_route_duration[30s]))",
+          "legendFormat": "order route"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(k6_restaurant_list_duration[30s]))",
           "legendFormat": "restaurant list"
         },
         {
-          "expr": "histogram_quantile(0.95, rate(k6_payment_list_duration_bucket[30s]))",
+          "expr": "histogram_quantile(0.95, rate(k6_menu_list_duration[30s]))",
+          "legendFormat": "menu list"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(k6_payment_list_duration[30s]))",
           "legendFormat": "payment list"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(k6_delivery_list_duration[30s]))",
+          "legendFormat": "delivery list"
         }
       ]
     }
