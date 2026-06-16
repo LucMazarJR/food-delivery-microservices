@@ -1,0 +1,102 @@
+{
+  "title": "k6 Load Test",
+  "uid": "k6-load-test",
+  "tags": ["k6", "load-test"],
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "refresh": "5s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Requisições por segundo",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "rate(k6_http_reqs_total[30s])",
+          "legendFormat": "req/s"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Duração das requisições (p95)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(k6_http_req_duration_seconds[30s])) * 1000",
+          "legendFormat": "p95 (ms)"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(k6_http_req_duration_seconds[30s])) * 1000",
+          "legendFormat": "p50 (ms)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Taxa de erros HTTP",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "k6_http_req_failed_rate",
+          "legendFormat": "taxa de erros"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Virtual Users ativos",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "k6_vus",
+          "legendFormat": "VUs"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Duração por cenário (p95)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(k6_auth_login_duration[30s]))",
+          "legendFormat": "auth login"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(k6_user_list_duration[30s]))",
+          "legendFormat": "user list"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(k6_order_list_duration[30s]))",
+          "legendFormat": "order list"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(k6_order_route_duration[30s]))",
+          "legendFormat": "order route"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(k6_restaurant_list_duration[30s]))",
+          "legendFormat": "restaurant list"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(k6_menu_list_duration[30s]))",
+          "legendFormat": "menu list"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(k6_payment_list_duration[30s]))",
+          "legendFormat": "payment list"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(k6_delivery_list_duration[30s]))",
+          "legendFormat": "delivery list"
+        }
+      ]
+    }
+  ]
+}

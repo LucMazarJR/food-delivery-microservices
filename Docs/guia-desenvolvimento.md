@@ -1,6 +1,7 @@
 # Guia de Desenvolvimento
 
-> Como o time vai trabalhar junto | Git + NestJS + Docker + Organização
+> Como o time trabalhou junto | Git + NestJS + Docker + Organização
+> **Projeto finalizado.** Este guia documenta os padrões e o fluxo de trabalho usados durante o desenvolvimento — útil como referência para quem for ler o código ou estender o projeto depois da entrega.
 
 ---
 
@@ -12,59 +13,27 @@ Cada serviço é uma **aplicação NestJS completamente independente**: tem seu 
 ava-bim-2/
 │
 ├── .gitignore
-├── .env.example
+├── .env.example            ← variáveis para o k6 (email/senha de teste)
 ├── docker-compose.yml      ← orquestra todos os containers
 ├── readme.md
 │
 ├── api-gateway/            ← NestJS — porta de entrada, JWT Guard, roteamento
-│   ├── src/
-│   │   ├── main.ts
-│   │   ├── app.module.ts
-│   │   ├── auth/           ← proxy para auth-service
-│   │   ├── user/           ← proxy para user-service
-│   │   ├── guards/         ← AuthGuard (JWT global)
-│   │   └── decorators/     ← @Public() para rotas abertas
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── nest-cli.json
-│   ├── .env.example
-│   └── Dockerfile
-│
 ├── auth-service/           ← NestJS — login e emissão de JWT
-│   ├── src/
-│   │   ├── main.ts
-│   │   ├── app.module.ts
-│   │   └── auth/
-│   │       ├── dto/        ← LoginDto, UserDto
-│   │       ├── auth.controller.ts
-│   │       ├── auth.service.ts
-│   │       └── auth.module.ts
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── nest-cli.json
-│   ├── .env.example
-│   └── Dockerfile
-│
 ├── user-service/           ← NestJS — CRUD de usuários
-│   ├── src/
-│   │   ├── main.ts
-│   │   ├── app.module.ts
-│   │   └── user/
-│   │       ├── dto/        ← CreateUserDto, UpdateUserDto
-│   │       ├── schema/     ← UserSchema (Mongoose)
-│   │       ├── user.controller.ts
-│   │       ├── user.service.ts
-│   │       └── user.module.ts
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── nest-cli.json
-│   ├── .env.example
-│   └── Dockerfile
+├── orders-service/         ← NestJS — CRUD de pedidos
+├── delivery-service/       ← NestJS — gerenciamento de entregas
+├── restaurant-service/     ← NestJS — gerenciamento de restaurantes
+├── tracking-service/       ← NestJS — rastreamento em tempo real (WebSocket)
+├── payment-service/        ← NestJS — processamento de pagamentos
+├── menu-service/           ← NestJS — gerenciamento de cardápios
 │
-├── menu-service/           ← próximo serviço a ser criado
+├── k6/
+│   └── load-test.js        ← script de teste de carga
 │
 ├── monitoring/
-│   └── prometheus.yml
+│   ├── prometheus.yml      ← targets de coleta
+│   └── grafana/
+│       └── provisioning/   ← datasources e dashboards pré-configurados
 │
 └── Docs/
 ```
@@ -73,11 +42,11 @@ ava-bim-2/
 
 ## Checklist geral do projeto
 
-### ✅ Concluído
+### ✅ Entregue
 
 - [x] Repositório no GitHub com colaboradores
 - [x] Estrutura de pastas e branches por serviço
-- [x] `docker-compose.yml` com todos os serviços e bancos
+- [x] `docker-compose.yml` com todos os serviços, bancos e monitoramento
 - [x] `Dockerfile` funcionando (modo development com hot reload)
 - [x] `docker-compose up` sobe tudo sem erro
 - [x] User Service — CRUD completo com MongoDB e bcrypt
@@ -85,20 +54,22 @@ ava-bim-2/
 - [x] Orders Service — CRUD completo com MongoDB, rota de entrega por prioridade
 - [x] Delivery Service — CRUD completo com MongoDB e status de entrega
 - [x] Restaurant Service — CRUD completo com MongoDB, busca por dono
+- [x] Tracking Service — rastreamento em tempo real com suporte a WebSocket
+- [x] Payment Service — processamento de pagamentos com MongoDB
+- [x] Menu Service — gerenciamento de cardápios com MongoDB
 - [x] API Gateway — Guard JWT global, `@Public()`, roteamento para todos os serviços
 - [x] Swagger em todos os serviços (`/api`) e no Gateway centralizado
 - [x] DTOs com validação via `class-validator` em todos os serviços
 - [x] `ConfigModule` global em todos os serviços
+- [x] Endpoint `/metrics` (prom-client) em cada serviço
+- [x] `prometheus.yml` configurado com todos os targets
+- [x] Grafana provisionado com datasource Prometheus
+- [x] Script de teste de carga com k6 integrado ao Prometheus
 - [x] Conventional commits com escopos
 
-### 🔲 Próximos passos
+### 🔲 Fora do escopo entregue
 
-- [ ] `RolesGuard` — propagação de `x-user-id` e `x-user-role` no Gateway → serviços internos
-- [ ] Endpoint `/metrics` (prom-client) em cada serviço
-- [ ] `prometheus.yml` com todos os targets
-- [ ] Dashboard no Grafana
-- [ ] Script de teste de carga com k6
-- [ ] Atualizar `docker-compose.yml` com monitoring
+- [ ] `RolesGuard` e propagação de `role` / `x-user-id` / `x-user-role` do Gateway para os serviços (autorização por papel) — design documentado em [Docs/conceitos-microsservicos.md](conceitos-microsservicos.md#8-autorização--controlando-o-que-cada-usuário-pode-fazer-não-implementado), não implementado
 
 ---
 
@@ -114,6 +85,9 @@ ava-bim-2/
 | Orders Service | `orders-service/` | `orders` → `develop` | 3003 | `localhost:3003/api` |
 | Delivery Service | `delivery-service/` | `delivery` → `develop` | 3004 | `localhost:3004/api` |
 | Restaurant Service | `restaurant-service/` | `restaurant` → `develop` | 3005 | `localhost:3005/api` |
+| Tracking Service | `tracking-service/` | `tracking` → `develop` | 3006 | `localhost:3006/api` |
+| Payment Service | `payment-service/` | `payment` → `develop` | 3007 | `localhost:3007/api` |
+| Menu Service | `menu-service/` | `menu` → `develop` | 3008 | `localhost:3008/api` |
 
 ```
 main
@@ -123,7 +97,10 @@ main
     ├── user
     ├── orders
     ├── delivery
-    └── restaurant
+    ├── restaurant
+    ├── tracking
+    ├── payment
+    └── menu
 ```
 
 Regra simples: **cada pessoa trabalha na sua branch e abre PR para `develop`**. O merge na `main` é feito quando tudo estiver integrado e funcionando.
@@ -205,7 +182,25 @@ http://localhost:3002/api  → Swagger do auth-service
 http://localhost:3003/api  → Swagger do orders-service
 http://localhost:3004/api  → Swagger do delivery-service
 http://localhost:3005/api  → Swagger do restaurant-service
+http://localhost:3006/api  → Swagger do tracking-service
+http://localhost:3007/api  → Swagger do payment-service
+http://localhost:3008/api  → Swagger do menu-service
+
+http://localhost:9090      → Prometheus (métricas e targets)
+http://localhost:3009      → Grafana (admin / admin)
 ```
+
+### Rodando o teste de carga
+
+```bash
+# Copiar e preencher o .env da raiz (email/senha de teste para o k6)
+cp .env.example .env
+
+# Rodar o k6 (perfil load-test)
+docker-compose --profile load-test run k6
+```
+
+Enquanto o k6 roda, abra o Grafana em `localhost:3009` para acompanhar as métricas em tempo real.
 
 ---
 
@@ -461,9 +456,9 @@ void bootstrap();
 
 ---
 
-## Controle de permissões com RolesGuard
+## Controle de permissões com RolesGuard (não implementado)
 
-O Gateway já repassa o payload JWT no objeto `request['user']` após validação. O próximo passo é repassar essas informações nos **headers internos** para os serviços de negócio saberem quem está fazendo a requisição.
+> **Nota:** este recurso ficou fora do escopo final do projeto. O Gateway repassa o payload JWT no objeto `request['user']` após validação, mas essa informação **não** é propagada para os serviços de negócio — eles não recebem `x-user-id` nem `x-user-role`, e não existe `RolesGuard` em nenhum serviço. O que segue é o design que foi planejado, mantido aqui como referência para quem quiser estender o projeto.
 
 ### Passo 1 — Repassar headers no Gateway
 

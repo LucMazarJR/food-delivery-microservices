@@ -1,7 +1,7 @@
 # Conceitos de Arquitetura de Microsserviços
 
 > Material de apoio teórico | Trabalho de Faculdade — Web I  
-> Stack: NestJS + MongoDB + Docker + JWT + Prometheus/Grafana
+> Stack: NestJS + MongoDB + Docker + JWT + Prometheus/Grafana + k6
 
 ---
 
@@ -37,31 +37,38 @@ Microsserviços dividem a aplicação em **serviços menores e independentes**, 
 Cada microsserviço roda em seu próprio **container Docker**. Um container é como um "mini servidor" independente: tem seu próprio processo Node.js, sua própria porta, seu próprio sistema de arquivos isolado.
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                       docker-compose                          │
-│                                                              │
-│  ┌────────────────┐    ┌────────────────┐                    │
-│  │  gateway-app   │    │   auth-app     │                    │
-│  │  porta: 3000   │    │   porta: 3002  │                    │
-│  └────────────────┘    └────────────────┘                    │
-│                                                              │
-│  ┌────────────────┐    ┌────────────────┐                    │
-│  │   users-app    │    │   menu-app     │                    │
-│  │   porta: 3001  │    │   porta: 3003  │                    │
-│  └────────────────┘    └────────────────┘                    │
-│                                                              │
-│  ┌────────────────┐    ┌──────────────────────┐              │
-│  │   users-db     │    │  prometheus + grafana │              │
-│  │  porta: 27017  │    │  portas: 9090 / 3030  │              │
-│  └────────────────┘    └──────────────────────┘              │
-└──────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│                          docker-compose                             │
+│                                                                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │ gateway-app  │  │  auth-app    │  │  users-app   │             │
+│  │  porta: 3000 │  │  porta: 3002 │  │  porta: 3001 │             │
+│  └──────────────┘  └──────────────┘  └──────────────┘             │
+│                                                                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  orders-app  │  │ delivery-app │  │restaurant-app│             │
+│  │  porta: 3003 │  │  porta: 3004 │  │  porta: 3005 │             │
+│  └──────────────┘  └──────────────┘  └──────────────┘             │
+│                                                                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │ tracking-app │  │ payment-app  │  │   menu-app   │             │
+│  │  porta: 3006 │  │  porta: 3007 │  │  porta: 3008 │             │
+│  └──────────────┘  └──────────────┘  └──────────────┘             │
+│                                                                    │
+│  MongoDB por serviço (users-db, orders-db, delivery-db, ...)       │
+│                                                                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  prometheus  │  │   grafana    │  │     k6       │             │
+│  │  porta: 9090 │  │  porta: 3009 │  │  (load-test) │             │
+│  └──────────────┘  └──────────────┘  └──────────────┘             │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 O **docker-compose** é o arquivo que orquestra todos esses containers: define a rede interna entre eles, as portas expostas e as variáveis de ambiente.
 
 Dentro dessa rede, os containers se comunicam pelo **nome do serviço**. O gateway não chama `http://localhost:3001` — ele chama `http://users-app:3000`, porque `users-app` é o nome do container na rede interna Docker.
 
-> **Atenção:** as portas externas (3001, 3002...) são para você acessar do host. Dentro da rede Docker, todos os serviços rodam na porta `3000` internamente. Por isso as URLs internas sempre terminam em `:3000`.
+> **Atenção:** as portas externas (3001, 3002, 3003...) são para você acessar do host. Dentro da rede Docker, todos os serviços NestJS rodam na porta `3000` internamente. Por isso as URLs internas sempre terminam em `:3000`.
 
 ---
 
@@ -140,7 +147,6 @@ O Gateway é o **único ponto de entrada** da aplicação. O mundo externo (Post
 1. **Validar o JWT** via Guard global — token inválido é rejeitado aqui
 2. **Rotear** para o serviço correto via `HttpService` (`@nestjs/axios`)
 3. **Expor o Swagger** centralizado em `/api`
-4. **Repassar headers internos** (`x-user-id`, `x-user-role`) para os serviços
 
 ```
 POST /auth/login    → http://auth-app:3000/auth/login
@@ -169,7 +175,7 @@ Responsável por dados de usuários:
 
 ### Serviços de negócio (ex: Menu Service)
 
-Implementam a lógica da aplicação. **Não validam JWT** — confiam que, se a requisição chegou pelo Gateway, o usuário já foi autenticado. Usam os headers `x-user-id` e `x-user-role` para saber quem está fazendo a requisição e controlar permissões.
+Implementam a lógica da aplicação. **Não validam JWT** — confiam que, se a requisição chegou pelo Gateway, o usuário já foi autenticado. Não recebem informação de quem fez a requisição nem de papel (`role`): essa propagação foi desenhada (ver [seção 8](#8-autorização--controlando-o-que-cada-usuário-pode-fazer-não-implementado)) mas não entrou no escopo final.
 
 ---
 
@@ -192,7 +198,7 @@ No projeto, o payload gerado pelo auth-service contém:
 const payload = { sub: user.email, username: user.name };
 ```
 
-> **Próximo passo:** adicionar `role` ao payload para que o Gateway possa repassar a permissão nos headers internos: `{ sub: user.email, username: user.name, role: user.role }`.
+> **Fora do escopo final:** o projeto não chegou a adicionar `role` ao payload (`{ sub, username, role }`). Autorização por papel (owner/customer) ficou documentada como extensão possível, mas não foi implementada.
 
 ---
 
@@ -296,7 +302,6 @@ findAll() { ... }
 5. Guard salva o payload em request['user']
 
 6. Gateway repassa → http://users-app:3000/user
-   (em breve: com headers x-user-id e x-user-role)
 
 7. user-service consulta MongoDB, retorna os dados
 8. Gateway devolve a resposta para o cliente
@@ -304,7 +309,7 @@ findAll() { ... }
 
 ---
 
-## 8. Autorização — controlando o que cada usuário pode fazer
+## 8. Autorização — controlando o que cada usuário pode fazer (não implementado)
 
 Autenticação responde *"quem é você?"*. Autorização responde *"o que você pode fazer?"*.
 
@@ -312,7 +317,9 @@ A diferença entre os status:
 - **401 Unauthorized** — token ausente ou inválido (não autenticado) — rejeitado no **Gateway**
 - **403 Forbidden** — token válido, mas sem permissão para aquela ação — rejeitado no **serviço de negócio**
 
-O JWT carregará um campo `role` no payload (ex: `"owner"` ou `"customer"`). O Gateway repassa esse valor no header `x-user-role`. Os serviços de negócio usam um **RolesGuard**:
+> **Status no projeto:** o escopo final entrega apenas **autenticação** (401). A camada de **autorização por papel** (403, `RolesGuard`) descrita abaixo é um design documentado para fins de aprendizado, mas não foi implementada nos serviços. Hoje, qualquer usuário autenticado pelo Gateway pode acessar as rotas dos serviços de negócio sem distinção de papel.
+
+O design pensado era um campo `role` no payload (ex: `"owner"` ou `"customer"`), repassado pelo Gateway no header `x-user-role`. Os serviços de negócio usariam um **RolesGuard**:
 
 ```typescript
 // No controller do menu-service
@@ -324,7 +331,7 @@ remove(@Param('id') id: string) {
 }
 ```
 
-O RolesGuard lê o header `x-user-role` e verifica se a role do usuário está na lista de roles permitidas. Se não estiver, lança **ForbiddenException** (403).
+O RolesGuard leria o header `x-user-role` e verificaria se a role do usuário está na lista de roles permitidas, lançando **ForbiddenException** (403) caso contrário.
 
 ---
 
@@ -536,9 +543,14 @@ Para justificar o uso de microsserviços, os domínios precisam ser **naturalmen
 | api-gateway | Entrada | Como o mundo acessa tudo |
 | auth-service | Identidade | Quem é o usuário |
 | user-service | Usuários | Dados e CRUD de usuários |
-| menu-service | Cardápio | Restaurantes e itens do menu |
+| orders-service | Pedidos | Criação e gestão de pedidos |
+| delivery-service | Entregas | Status e controle de entregas |
+| restaurant-service | Restaurantes | Dados dos estabelecimentos |
+| tracking-service | Rastreamento | Localização em tempo real |
+| payment-service | Pagamentos | Processamento financeiro |
+| menu-service | Cardápio | Itens e preços por restaurante |
 
-Cada um pode evoluir, ser deployado e escalar independentemente. Se o menu-service cair, o login ainda funciona. Se um serviço específico precisar de mais recursos, só ele é escalado.
+Cada um pode evoluir, ser deployado e escalar independentemente. Se o menu-service cair, o login ainda funciona. Se o tracking-service precisar de mais recursos (WebSocket é mais custoso), só ele é escalado — os demais ficam intactos.
 
 ---
 

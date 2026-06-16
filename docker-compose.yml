@@ -77,7 +77,7 @@ services:
     volumes:
       - orders-data:/data/db
 
-  # Serviço de entrega (4)
+  # Serviço de Entrega (4)
   delivery-app:
     build:
       context: ./delivery-service
@@ -125,9 +125,132 @@ services:
     volumes:
       - restaurant-data:/data/db
 
+  # Serviço de Rastreamento (6)
+  tracking-app:
+    build:
+      context: ./tracking-service
+      target: development
+    env_file:
+      - ./tracking-service/.env
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "3006:3000"
+    volumes:
+      - ./tracking-service:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - tracking-db
+
+  tracking-db:
+    image: mongo
+    env_file:
+      - ./tracking-service/.env
+    volumes:
+      - tracking-data:/data/db
+
+  # Serviço de Pagamentos (7)
+  payment-app:
+    build:
+      context: ./payment-service
+      target: development
+    env_file:
+      - ./payment-service/.env
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "3007:3000"
+    volumes:
+      - ./payment-service:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - payment-db
+
+  payment-db:
+    image: mongo
+    env_file:
+      - ./payment-service/.env
+    volumes:
+      - payment-data:/data/db
+
+  # Serviço de Cardápio (8)
+  menu-app:
+    build:
+      context: ./menu-service
+      target: development
+    env_file:
+      - ./menu-service/.env
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "3008:3000"
+    volumes:
+      - ./menu-service:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - menu-db
+
+  menu-db:
+    image: mongo
+    env_file:
+      - ./menu-service/.env
+    volumes:
+      - menu-data:/data/db
+
+  # Teste de carga
+  k6:
+    image: grafana/k6:latest
+    profiles:
+      - load-test
+    environment:
+      - BASE_URL=http://gateway-app:3000
+      - TEST_EMAIL=${K6_TEST_EMAIL}
+      - TEST_PASSWORD=${K6_TEST_PASSWORD}
+      - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
+      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
+    volumes:
+      - ./k6:/scripts
+    command: run --out experimental-prometheus-rw /scripts/load-test.js
+    depends_on:
+      - gateway-app
+      - prometheus
+
+  # Monitoramento
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+      - '--web.enable-remote-write-receiver'
+      - '--enable-feature=native-histograms'
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3009:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
 
 volumes:
   users-data:
   orders-data:
   delivery-data:
   restaurant-data:
+  tracking-data:
+  payment-data:
+  menu-data:
+  prometheus-data:
+  grafana-data:

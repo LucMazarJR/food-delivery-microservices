@@ -1,8 +1,8 @@
 # Food Delivery — Microsserviços
 
-Plataforma de delivery de comida sendo construída do zero para aprender arquitetura de microsserviços na prática: como separar domínios, fazer serviços conversarem, proteger rotas com JWT e monitorar tudo rodando.
+Plataforma de delivery de comida construída do zero para aprender arquitetura de microsserviços na prática: como separar domínios, fazer serviços conversarem, proteger rotas com JWT e monitorar tudo rodando.
 
-> **Em desenvolvimento.** User service, auth service e API Gateway implementados com padrões completos (DTOs, validação, Swagger, JWT Guard). Menu service e observabilidade são os próximos passos.
+> **✅ Projeto finalizado.** Trabalho de faculdade (Web I) concluído com os 9 microsserviços implementados, API Gateway com autenticação JWT, observabilidade via Prometheus/Grafana e teste de carga com k6. Autorização por papel (`RolesGuard`) foi desenhada mas não entrou no escopo entregue — ver [Docs/conceitos-microsservicos.md](Docs/conceitos-microsservicos.md#8-autorização--controlando-o-que-cada-usuário-pode-fazer-não-implementado).
 
 ---
 
@@ -23,18 +23,25 @@ O projeto existe para colocar a mão na massa em tecnologias que aparecem em qua
 
 ## O projeto
 
-Uma plataforma de delivery simples com serviços separados por domínio:
+Uma plataforma de delivery completa com 9 serviços separados por domínio:
 
 ```
   Cliente/Postman ──────► gateway-app :3000
                                 │
-                                ├──► auth-app    :3002  (interno: 3000)
-                                ├──► users-app   :3001  (interno: 3000)
-                                └──► menu-app    :3003  (interno: 3000) ← próximo passo
+                                ├──► auth-app        :3002  (login / JWT)
+                                ├──► users-app       :3001  (usuários)
+                                ├──► orders-app      :3003  (pedidos)
+                                ├──► delivery-app    :3004  (entregas)
+                                ├──► restaurant-app  :3005  (restaurantes)
+                                ├──► tracking-app    :3006  (rastreamento)
+                                ├──► payment-app     :3007  (pagamentos)
+                                └──► menu-app        :3008  (cardápios)
 
-  users-db  (MongoDB)
-  prometheus :9090
-  grafana    :3030
+  users-db / orders-db / delivery-db / restaurant-db
+  tracking-db / payment-db / menu-db  (MongoDB — um por serviço)
+
+  prometheus  :9090
+  grafana     :3009
 ```
 
 Tudo orquestrado via Docker Compose. O cliente só conhece o Gateway — nunca acessa os serviços diretamente.
@@ -46,21 +53,41 @@ Tudo orquestrado via Docker Compose. O cliente só conhece o Gateway — nunca a
 | Serviço | Pasta | Porta externa | Status |
 |---|---|---|---|
 | API Gateway | `api-gateway/` | 3000 | ✅ Implementado |
-| Auth Service | `auth-service/` | 3002 | ✅ Implementado |
 | User Service | `user-service/` | 3001 | ✅ Implementado |
-| Menu Service | `menu-service/` | 3003 | 🔲 Próximo passo |
+| Auth Service | `auth-service/` | 3002 | ✅ Implementado |
+| Orders Service | `orders-service/` | 3003 | ✅ Implementado |
+| Delivery Service | `delivery-service/` | 3004 | ✅ Implementado |
+| Restaurant Service | `restaurant-service/` | 3005 | ✅ Implementado |
+| Tracking Service | `tracking-service/` | 3006 | ✅ Implementado |
+| Payment Service | `payment-service/` | 3007 | ✅ Implementado |
+| Menu Service | `menu-service/` | 3008 | ✅ Implementado |
 
-### User Service
-Gerencia usuários da plataforma. CRUD completo com MongoDB, senhas hasheadas com bcrypt. Expõe busca por e-mail (rota interna usada pelo auth-service). Swagger disponível em `localhost:3001/api`.
+### API Gateway
+Ponto de entrada único. Guard JWT global protege todas as rotas — use `@Public()` para abrir exceções. Roteia para todos os serviços via `HttpService`. Swagger centralizado em `localhost:3000/api`.
 
 ### Auth Service
 Recebe e-mail e senha, busca o usuário no user-service via HTTP interno, valida a senha e devolve um JWT assinado. Único serviço que conhece o `JWT_SECRET`. Swagger em `localhost:3002/api`.
 
-### API Gateway
-Ponto de entrada único. Guard JWT global protege todas as rotas — use `@Public()` para abrir exceções. Roteia para user-service e auth-service via `HttpService`. Swagger centralizado em `localhost:3000/api`.
+### User Service
+Gerencia usuários da plataforma. CRUD completo com MongoDB, senhas hasheadas com bcrypt. Expõe busca por e-mail (rota interna usada pelo auth-service). Swagger em `localhost:3001/api`.
+
+### Orders Service
+Gerencia pedidos da plataforma. CRUD completo com MongoDB e rota de prioridade de entrega. Swagger em `localhost:3003/api`.
+
+### Delivery Service
+Gerencia entregas com controle de status. CRUD completo com MongoDB. Swagger em `localhost:3004/api`.
+
+### Restaurant Service
+Gerencia restaurantes com filtro por dono. CRUD completo com MongoDB. Swagger em `localhost:3005/api`.
+
+### Tracking Service
+Rastreamento em tempo real das entregas com suporte a WebSocket. MongoDB para persistência. Swagger em `localhost:3006/api`.
+
+### Payment Service
+Processamento e gerenciamento de pagamentos. CRUD completo com MongoDB. Swagger em `localhost:3007/api`.
 
 ### Menu Service
-Vai gerenciar restaurantes e cardápios. Dono pode editar o próprio cardápio; clientes só consultam. Vai usar o decorator `@Roles()` + `RolesGuard` para controle de permissão.
+Gerencia cardápios e itens dos restaurantes. Dono pode editar o próprio cardápio; clientes só consultam. Swagger em `localhost:3008/api`.
 
 ---
 
@@ -73,11 +100,18 @@ git clone https://github.com/LucMazarJR/ava-bim-2.git
 cd ava-bim-2
 
 # Cada serviço tem seu próprio .env
-cp api-gateway/.env.example  api-gateway/.env
-cp user-service/.env.example user-service/.env
-cp auth-service/.env.example auth-service/.env
-# Preencher as variáveis nos .env criados
+cp api-gateway/.env.example     api-gateway/.env
+cp auth-service/.env.example    auth-service/.env
+cp user-service/.env.example    user-service/.env
+cp orders-service/.env.example  orders-service/.env
+cp delivery-service/.env.example delivery-service/.env
+cp restaurant-service/.env.example restaurant-service/.env
+cp tracking-service/.env.example  tracking-service/.env
+cp payment-service/.env.example   payment-service/.env
+cp menu-service/.env.example    menu-service/.env
+cp .env.example .env
 
+# Subir todos os serviços
 docker-compose up -d
 ```
 
@@ -88,7 +122,7 @@ docker-compose ps
 # Logs de um serviço
 docker-compose logs -f auth-app
 
-# Rebuild após mudar dependência
+# Rebuild após mudar Dockerfile
 docker-compose up -d --build
 
 # Derrubar tudo (preserva os bancos)
@@ -98,6 +132,17 @@ docker-compose down
 docker-compose down -v
 ```
 
+### Teste de carga com k6
+
+```bash
+# Rodar o script de carga (envia métricas para o Prometheus)
+docker-compose --profile load-test run k6
+```
+
+---
+
+## Endpoints
+
 ### Swagger por serviço
 
 | Serviço | URL do Swagger |
@@ -105,10 +150,23 @@ docker-compose down -v
 | API Gateway | http://localhost:3000/api |
 | User Service | http://localhost:3001/api |
 | Auth Service | http://localhost:3002/api |
+| Orders Service | http://localhost:3003/api |
+| Delivery Service | http://localhost:3004/api |
+| Restaurant Service | http://localhost:3005/api |
+| Tracking Service | http://localhost:3006/api |
+| Payment Service | http://localhost:3007/api |
+| Menu Service | http://localhost:3008/api |
+
+### Monitoramento
+
+| Ferramenta | URL | Credenciais |
+|---|---|---|
+| Prometheus | http://localhost:9090 | — |
+| Grafana | http://localhost:3009 | admin / admin |
 
 ---
 
 ## Documentação
 
 - [Conceitos de microsserviços](Docs/conceitos-microsservicos.md) — teoria por trás das decisões de arquitetura, com os padrões reais usados no projeto
-- [Guia de desenvolvimento](Docs/guia-desenvolvimento.md) — Git, Docker, padrões estabelecidos e como continuar desenvolvendo o menu-service
+- [Guia de desenvolvimento](Docs/guia-desenvolvimento.md) — Git, Docker, padrões estabelecidos e organização do time
